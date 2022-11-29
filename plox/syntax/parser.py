@@ -2,6 +2,7 @@ from typing import List
 from plox.error import error
 from plox.lexer.token import *
 from plox.syntax.expr import *
+from plox.syntax import stmt
 
 class Parser:
     def __init__(self, tokens: List[Token]):
@@ -15,13 +16,11 @@ class Parser:
         self.tokens = tokens
         self.current = 0
 
-    def parse(self):##return List<stmt>
-        """
-         8.1.2 change 
-        """
+    def parse(self):
         statements = []
         while not self.is_end():
             statements.append(self.statement())
+        
         return statements
 
     def peek(self):
@@ -58,6 +57,25 @@ class Parser:
 
         error(self.peek().line, message)
         exit(1)
+
+    def statement(self):
+        """
+        statement := exprStmt | printStmt ;
+        """
+        if self.match(PRINT):
+            return self.print_statement()
+        return self.expression_statement
+        
+    def print_statement(self):
+        """
+        printStmt := "print" expression ";" ;
+        """
+        value = self.expression()
+        self.consume(SEMICOLON, "Expect ; after expression.")
+        return stmt.Expression(value)
+
+    def expression_statement(self):
+        pass
 
     def expression(self):
         """
