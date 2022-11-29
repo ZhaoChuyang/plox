@@ -4,7 +4,6 @@ from plox.lexer.token import *
 from plox.syntax.expr import *
 from plox.syntax import stmt
 
-
 class Parser:
     def __init__(self, tokens: List[Token]):
         """
@@ -84,7 +83,6 @@ class Parser:
             expression := assignment ;
         """
         return self.assignment()
-
     def assignment(self):
         """
         Syntax:

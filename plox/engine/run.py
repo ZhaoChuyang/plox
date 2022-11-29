@@ -5,6 +5,15 @@ from plox.utils import check_path_exists
 from plox.error import HAD_ERROR
 
 
+"""
+7.4.1
+author: anhangcheng
+2022.11.28 17:13
+"""
+## new here
+from plox.error import HAD_RUNTIME_ERROR
+from main import interpreter
+
 class PLoxPromt(cmd.Cmd):
     """
     Class of the interactive shell of PLox.
@@ -33,6 +42,14 @@ def run_script(path: str):
         run(script)
     
     if HAD_ERROR: exit(1)
+
+    """
+    7.4.1
+    author: anhangcheng
+    2022.11.28 17:13
+    """
+    ### new here
+    if HAD_RUNTIME_ERROR: exit(2)
     exit(0)
 
 
@@ -46,7 +63,19 @@ def run(source: str):
     tokens = scanner.scan_tokens()
     parser = Parser(tokens)
 
+
     for token in tokens:
         print(token)
     
     print(parser.parse())
+
+    ## new here
+    """
+    7.4.1
+    8.
+    author: anhangcheng
+    2022.11.28 17:13
+    """
+    statements = parser.parse()
+    interpreter._interpret(statements)
+
