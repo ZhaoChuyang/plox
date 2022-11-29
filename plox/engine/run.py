@@ -1,6 +1,7 @@
 import cmd
 from plox.lexer import Scanner
 from plox.syntax import Parser
+from plox.syntax import Interpreter
 from plox.utils import check_path_exists
 from plox.error import HAD_ERROR
 
@@ -44,9 +45,9 @@ def run_promt():
 def run(source: str):
     scanner = Scanner(source)
     tokens = scanner.scan_tokens()
+    print(tokens)
     parser = Parser(tokens)
-
-    for token in tokens:
-        print(token)
-    
-    print(parser.parse())
+    statements = parser.parse()
+    print(statements)
+    interpreter = Interpreter()
+    interpreter.interpret(statements)
