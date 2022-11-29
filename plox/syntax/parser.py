@@ -65,7 +65,7 @@ class Parser:
         """
         if self.match(PRINT):
             return self.print_statement()
-        return self.expression_statement
+        return self.expression_statement()
         
     def print_statement(self):
         """
@@ -73,7 +73,7 @@ class Parser:
         """
         value = self.expression()
         self.consume(SEMICOLON, "Expect ; after expression.")
-        return stmt.Expression(value)
+        return stmt.Print(value)
 
     def expression_statement(self):
         expr = self.expression()
@@ -174,6 +174,8 @@ class Parser:
         Syntax:
             term := factor ( ( "-" | "+" ) factor )* ;
         """
+        # from IPython import embed
+        # embed()
         expr = self.factor()
 
         while self.match(MINUS, PLUS):
@@ -256,7 +258,7 @@ class Parser:
         if self.match(TRUE): return Literal(True)
         if self.match(NIL): return Literal(None)
 
-        if self.match(NUMBER, STRING): return Literal(self.previous())
+        if self.match(NUMBER, STRING): return Literal(self.previous().literal)
 
         if self.match(SUPER):
             keyword = self.previous()

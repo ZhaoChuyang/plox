@@ -1,11 +1,7 @@
 from typing import List
 from abc import ABC, abstractmethod
 from plox.lexer.token import Token
-
-
-class Visitor(ABC):
-    def __init__(self):
-        pass
+from plox.syntax import Visitor
 
 
 class Expr(ABC):
