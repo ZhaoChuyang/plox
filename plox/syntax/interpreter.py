@@ -3,24 +3,19 @@ from plox.syntax import expr as EXPR
 from plox.syntax import stmt as STMT
 from plox.lexer.token import *
 from plox.error import *
-# from enviroment import *
-
-
-
-class Environment:
-    pass
+from enviroment import Environment
 
 
 class Interpreter(Visitor):
-    def __init__(self, environment: Environment = None):
+    def __init__(self, environment: Environment):
         self.environment = environment
 
     def interpret(self, statements) -> None:
         try: 
             for statement in statements:
                 self._execute(statement)
-        except RuntimeError as e:
-            runtimeError(e)
+        except PLoxRuntimeError as e:
+            runtime_error(e)
 
     def _execute(self, stmt: STMT.Stmt):
         stmt.accept(self)
@@ -92,9 +87,17 @@ class Interpreter(Visitor):
     new in 8.1.3
     """
     def visitExpressionStmt(self, stmt: STMT.Expression) -> None:
+        """
+        Syntax:
+            exprStmt := expression ";" ;
+        """
         self._evaluate(stmt.expression)
     
     def visitPrintStmt(self, stmt: STMT.Print):
+        """
+        Syntax:
+            printStmt := "print" expression ";" ;
+        """
         value = self._evaluate(stmt.expression)
         print(self._stringify(value))
     
@@ -160,12 +163,12 @@ class Interpreter(Visitor):
     def _checkNumberOperand(self, operator: Token, operand: object) -> None:
         if isinstance(operand, float):
             return
-        runtimeError("operand must be a number")
+        raise PLoxRuntimeError(operator, "operand must be a number")
 
     def _checkNumberOperands(self, operator: Token, left: object, right: object) -> None:
         if isinstance(left, float) and isinstance(right, float):
             return
-        runtimeError("operand must be a number")
+        raise PLoxRuntimeError(operator, "operand must be a number")
 
     def _isEqual(self, a: object, b: object) -> bool:
         if a is None and b is None:

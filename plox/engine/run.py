@@ -3,7 +3,7 @@ from plox.lexer import Scanner
 from plox.syntax import Parser
 from plox.syntax import Interpreter
 from plox.utils import check_path_exists
-from plox.error import HAD_ERROR
+from plox.error import HAD_ERROR, HAD_RUNTIME_ERROR
 
 
 class PLoxPromt(cmd.Cmd):
@@ -34,6 +34,7 @@ def run_script(path: str):
         run(script)
     
     if HAD_ERROR: exit(1)
+    if HAD_RUNTIME_ERROR: exit(2)
     exit(0)
 
 
