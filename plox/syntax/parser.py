@@ -4,6 +4,7 @@ from plox.lexer.token import *
 from plox.syntax.expr import *
 from plox.syntax import stmt
 
+
 class Parser:
     def __init__(self, tokens: List[Token]):
         """
@@ -75,7 +76,9 @@ class Parser:
         return stmt.Expression(value)
 
     def expression_statement(self):
-        pass
+        expr = self.expression()
+        self.consume(SEMICOLON, "Expect ; after expression.")
+        return stmt.Expression(expr)
 
     def expression(self):
         """
@@ -83,6 +86,7 @@ class Parser:
             expression := assignment ;
         """
         return self.assignment()
+
     def assignment(self):
         """
         Syntax:
