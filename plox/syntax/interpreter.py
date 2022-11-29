@@ -46,6 +46,7 @@ class Interpreter(Visitor):###Visitor<Object>
         return expr.value
     
     """
+    new 
     new in ch9
     """
     def visitLogicalExpr(self, expr: Logical):
