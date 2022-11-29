@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from plox.syntax import Visitor
 from plox.syntax.expr import Expr
+from plox.lexer.token import Token
 
 
 class Stmt(ABC):
@@ -17,10 +18,6 @@ class Stmt(ABC):
 
 class Expression(Stmt):
     def __init__(self, expression: Expr):
-        """
-        Syntax:
-            exprStmt := expression ";" ;
-        """
         self.expression = expression
 
     def accept(self, visitor: Visitor):
@@ -29,10 +26,6 @@ class Expression(Stmt):
 
 class Print(Stmt):
     def __init__(self, expression: Expr):
-        """
-        Syntax:
-            printStmt := "print" expression ";" ;
-        """
         self.expression = expression
     
     def accept(self, visitor: Visitor):
@@ -44,7 +37,15 @@ class Block:
 
 
 class Var:
-    pass
+    def __init__(self, name: Token, initializer: Expr):
+        """
+        name is of type IDENTIFIER, which is the variable name.
+        """
+        self.name = name
+        self.initializer = initializer
+
+    def accept(self, visitor: Visitor):
+        return visitor.visitVarStmt(self)
 
 
 class If:
