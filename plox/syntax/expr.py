@@ -25,6 +25,7 @@ class Assign(Expr):
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitAssignExpr(self)
 
+
 class Binary(Expr):
     def __init__(self, left: Expr, operator: Token, right: Expr):
         self.left = left
