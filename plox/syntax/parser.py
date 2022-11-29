@@ -3,7 +3,6 @@ from plox.error import error
 from plox.lexer.token import *
 from plox.syntax.expr import *
 
-
 class Parser:
     def __init__(self, tokens: List[Token]):
         """
@@ -16,11 +15,14 @@ class Parser:
         self.tokens = tokens
         self.current = 0
 
-    def parse(self):
-        try:
-            return self.expression()
-        except:
-            return None
+    def parse(self):##return List<stmt>
+        """
+         8.1.2 change 
+        """
+        statements = []
+        while not self.is_end():
+            statements.append(self.statement())
+        return statements
 
     def peek(self):
         return self.tokens[self.current]
@@ -63,7 +65,6 @@ class Parser:
             expression := assignment ;
         """
         return self.assignment()
-
     def assignment(self):
         """
         Syntax:

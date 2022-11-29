@@ -63,6 +63,7 @@ def run(source: str):
     tokens = scanner.scan_tokens()
     parser = Parser(tokens)
 
+
     for token in tokens:
         print(token)
     
@@ -71,7 +72,10 @@ def run(source: str):
     ## new here
     """
     7.4.1
+    8.
     author: anhangcheng
     2022.11.28 17:13
     """
-    interpreter._interpret(parser.parse())
+    statements = parser.parse()
+    interpreter._interpret(statements)
+
