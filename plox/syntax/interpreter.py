@@ -3,12 +3,12 @@ from plox.syntax import expr as EXPR
 from plox.syntax import stmt as STMT
 from plox.lexer.token import *
 from plox.error import *
-from enviroment import Environment
+from plox.syntax.enviroment import Environment
 
 
 class Interpreter(Visitor):
-    def __init__(self, environment: Environment):
-        self.environment = environment
+    def __init__(self):
+        self.environment = Environment()
 
     def interpret(self, statements) -> None:
         try: 
@@ -21,16 +21,18 @@ class Interpreter(Visitor):
         stmt.accept(self)
 
     def visitBlockStmt(self, stmt: STMT.Block):
-        self.execute_block(stmt.statement, Environment(self.environment))
-        return None
+        self.execute_block(stmt.statements, Environment(self.environment))
     
     def execute_block(self, statements, environment: Environment):
+        # original enviroment outside the block
         previous = self.environment
         try:
             self.environment = environment
             for statement in statements:
                 self._execute(statement)
         finally:
+            # after leaving this block, delete related environment,
+            # i.e. restore to the original environment
             self.environment = previous
 
     def _stringify(self, object: object) -> str:
@@ -78,9 +80,17 @@ class Interpreter(Visitor):
         return None
 
     def visitVariableExpr(self, expr: EXPR.Variable):
-        return self.environment.get(expr.name)
+        # the type of expr.name is Token, you need to access its attribute lexeme to get the true variable name.
+        return self.environment.get(expr.name.lexeme)
     
     def _evaluate(self, expr: EXPR.Expr) -> object:
+        """
+        `_evaluate()` is used specifically for Expression, which allows the given expr evaluate
+        itself with the appropriate visitor method. For every Expression defined in `expr.py`
+        you need to provide a visitor method to evaluate and return the expected value for interpreting.
+        
+        Note: Statement is evaluated using the `_execute()` method.
+        """
         return expr.accept(self)
     
     """
@@ -115,7 +125,7 @@ class Interpreter(Visitor):
         value = None
         if stmt.initializer is not None:
             value = self._evaluate(stmt.initializer)
-        
+  
         self.environment.define(stmt.name.lexeme, value)
     """
          new in 9

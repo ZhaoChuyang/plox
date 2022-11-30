@@ -6,6 +6,9 @@ from plox.utils import check_path_exists
 from plox.error import HAD_ERROR, HAD_RUNTIME_ERROR
 
 
+
+
+
 class PLoxPromt(cmd.Cmd):
     """
     Class of the interactive shell of PLox.
@@ -42,13 +45,14 @@ def run_promt():
     promt = PLoxPromt()
     promt.cmdloop()
 
-
+# TODO: promt mode has bugs! previous state cannot be restored correctly!
 def run(source: str):
-    scanner = Scanner(source)
-    tokens = scanner.scan_tokens()
-    print(tokens)
-    parser = Parser(tokens)
-    statements = parser.parse()
-    print(statements)
+    scanner = Scanner()
+    parser = Parser()
     interpreter = Interpreter()
+
+    tokens = scanner.scan_tokens(source)
+    print(tokens)
+    statements = parser.parse(tokens)
+    print(statements)
     interpreter.interpret(statements)
