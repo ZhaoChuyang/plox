@@ -21,10 +21,10 @@ class Interpreter(Visitor):
         stmt.accept(self)
 
     def visitBlockStmt(self, stmt: STMT.Block):
-        self.executeBlock(stmt.statement, Environment(self.environment))
+        self.execute_block(stmt.statement, Environment(self.environment))
         return None
     
-    def executeBlock(self, statements, environment: Environment):
+    def execute_block(self, statements, environment: Environment):
         previous = self.environment
         try:
             self.environment = environment
@@ -52,14 +52,14 @@ class Interpreter(Visitor):
     def visitLogicalExpr(self, expr: EXPR.Logical):
         left = self._evaluate(expr.left)
         if isinstance(expr.operator.type, OR):
-            if self._isTruthy(left):
+            if self._is_truthy(left):
                 return left
         else:
-            if not self._isTruthy(left):
+            if not self._is_truthy(left):
                 return left
         return self._evaluate(expr.right)
 
-    def _isTruthy(self, object: object) -> bool:
+    def _is_truthy(self, object: object) -> bool:
         if object is None:
             return False
         if isinstance(object,bool):
@@ -70,10 +70,10 @@ class Interpreter(Visitor):
         right = self._evaluate(expr.right)
         
         if isinstance(expr.operator.type, MINUS):
-            self._checkNumberOperand(expr.operator, right)
+            self._check_number_operand(expr.operator, right)
             return -float(right)
         elif isinstance(expr.operator.type, BANG):
-            return self._isTruthy(right)
+            return self._is_truthy(right)
 
         return None
 
@@ -93,6 +93,16 @@ class Interpreter(Visitor):
         """
         self._evaluate(stmt.expression)
     
+    """
+     new in 9.2
+    """
+    def visitIfStmt(self, stmt: STMT.If):
+        if self._is_truthy(self._evaluate(stmt.condition)):
+            self._execute(stmt.thenBranch)
+        elif stmt.elseBranch is not None:
+            self._execute(stmt.elseBranch)
+        return None
+
     def visitPrintStmt(self, stmt: STMT.Print):
         """
         Syntax:
@@ -107,6 +117,13 @@ class Interpreter(Visitor):
             value = self._evaluate(stmt.initializer)
         
         self.environment.define(stmt.name.lexeme, value)
+    """
+         new in 9
+    """
+    def visitWhileStmt(self, stmt: STMT.While):
+        while self._is_truthy(self._evaluate(stmt.condition)):
+            self._execute(stmt.body)
+        return None
 
     def visitAssignExpr(self, expr: EXPR.Assign) -> object:
         value = self._evaluate(expr.value)
@@ -117,30 +134,30 @@ class Interpreter(Visitor):
     new in ch9
     """
     def visitIfStmt(self, stmt: STMT.If):
-        if self._isTruthy(self._evaluate(stmt.condition)):
+        if self._is_truthy(self._evaluate(stmt.condition)):
             self._execute(stmt.thenBranch)
         elif stmt.elseBranch is not None:
             self._execute(stmt.elseBranch)
         return None
 
-    def visitBinaryExpr(self, expr: STMT.Binary) -> object:
+    def visitBinaryExpr(self, expr: EXPR.Binary) -> object:
         left = self._evaluate(expr.left)
         right = self._evaluate(expr.right)
 
         if isinstance(expr.operator, GREATER):
-            self._checkNumberOperands(expr.operator, left, right)
+            self._check_number_operands(expr.operator, left, right)
             return float(left) > float(right)
         elif isinstance(expr.operator, GREATER_EQUAL):
-            self._checkNumberOperands(expr.operator, left, right)
+            self._check_number_operands(expr.operator, left, right)
             return float(left) >= float(right)
         elif isinstance(expr.operator, LESS):
-            self._checkNumberOperands(expr.operator, left, right)
+            self._check_number_operands(expr.operator, left, right)
             return float(left) < float(right)
         elif isinstance(expr.operator, LESS_EQUAL):
-            self._checkNumberOperands(expr.operator, left, right)
+            self._check_number_operands(expr.operator, left, right)
             return float(left) <= float(right)
         elif isinstance(expr.operator, MINUS):
-            self._checkNumberOperands(expr.operator, left, right)
+            self._check_number_operands(expr.operator, left, right)
             return float(left) - float(right)
         elif isinstance(expr.operator, PLUS):
             if isinstance(left, float) and isinstance(right, float):
@@ -148,29 +165,29 @@ class Interpreter(Visitor):
             if isinstance(left, str) and isinstance(right, str):
                 return str(left) + str(right)
         elif isinstance(expr.operator, SLASH):
-            self._checkNumberOperands(expr.operator, left, right)
+            self._check_number_operands(expr.operator, left, right)
             return float(left) / float(right)
         elif isinstance(expr.operator, STAR):
-            self._checkNumberOperands(expr.operator, left, right)
+            self._check_number_operands(expr.operator, left, right)
             return float(left) * float(right)
         elif isinstance(expr.operator, BANG_EQUAL):
-            return not self._isEqual(left,right)
+            return not self._is_equal(left,right)
         elif isinstance(expr.operator, EQUAL_EQUAL):
-            return self._isEqual(left,right)
+            return self._is_equal(left,right)
         
         return None
 
-    def _checkNumberOperand(self, operator: Token, operand: object) -> None:
+    def _check_number_operand(self, operator: Token, operand: object) -> None:
         if isinstance(operand, float):
             return
         raise PLoxRuntimeError(operator, "operand must be a number")
 
-    def _checkNumberOperands(self, operator: Token, left: object, right: object) -> None:
+    def _check_number_operands(self, operator: Token, left: object, right: object) -> None:
         if isinstance(left, float) and isinstance(right, float):
             return
         raise PLoxRuntimeError(operator, "operand must be a number")
 
-    def _isEqual(self, a: object, b: object) -> bool:
+    def _is_equal(self, a: object, b: object) -> bool:
         if a is None and b is None:
             return True
         if a is None:

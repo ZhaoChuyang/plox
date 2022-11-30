@@ -87,14 +87,77 @@ class Parser:
         self.consume(SEMICOLON, "Expect ';' after variable declaration.")
         return stmt.Var(name, initializer)
 
-    def statement(self):
-        """
-        statement := exprStmt | printStmt ;
-        """
+    """
+        9.2 add after statement()
+    """
+
+    def if_statement(self):
+        self.consume(LEFT_PAREN,"Expect '(' after 'if'.")
+        condition = self.expression()
+        self.consume(RIGHT_PAREN,"Expect ')' after if condition.")
+        thenBranch = self.statement()
+        elseBranch = None
+        if self.match(ELSE):
+            elseBranch = self.statement()
+        
+        return stmt.If(condition, thenBranch, elseBranch)
+
+
+    def statement(self) :
+        if self.match(FOR):
+            return self.for_statement()
+        if self.match(IF):
+            return self.if_statement()
         if self.match(PRINT):
             return self.print_statement()
+        if self.match(WHILE):
+            return self.while_statement()
+        if self.match(LEFT_BRACE):
+            return stmt.Block(self.block())
         return self.expression_statement()
         
+    def while_statement(self):
+        self.consume(LEFT_PAREN, "Expect '(' after 'while'.")
+        condition = self.expression()
+        self.consume(RIGHT_PAREN, "Expect ')' after condition.")
+        body = self.statement()
+        return stmt.While(condition, body)
+    
+    def for_statement(self):
+        self.consume(LEFT_PAREN, "Expect '(' after 'for'.")
+        #More here......
+        initializer = None
+        if self.match(SEMICOLON):
+            initializer = None
+        elif self.match(VAR):
+            initializer = self.var_declaration()
+        else:
+            initializer = self.expression_statement()
+        condition = None
+        if not self.check(SEMICOLON):
+            condition = self.expression()
+
+        self.consume(SEMICOLON,"Expect ';' after loop condition.")
+
+        increment = None
+        if not self.check(RIGHT_PAREN):
+            increment = self.expression()
+        self.consume(RIGHT_PAREN,"Expect ')' after for clauses.")
+
+        body = self.statement()
+        if increment is not None:
+            lists = []
+            lists.append(initializer)
+            lists.append(body)
+            body = stmt.Block(lists)
+
+        if condition is None:
+            condition = Literal(True)
+
+        body = stmt.While(condition, body)
+        
+        return body
+
     def print_statement(self):
         """
         printStmt := "print" expression ";" ;
