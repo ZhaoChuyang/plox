@@ -48,9 +48,17 @@ class Var:
         return visitor.visitVarStmt(self)
 
 
-class If:
-    pass
+class If(Stmt):
+    def __init__(self, condition: Expr, thenBranch: Stmt, elseBranch :Stmt):
+        self.condition = condition
+        self.thenBranch = thenBranch
+        self.elseBranch = elseBranch
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitIfStmt(self)
 
-
-class Binary:
-    pass
+class While(Stmt):
+    def __init__(self, condition: Expr, body: Stmt):
+        self.condition = condition
+        self.body = body
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitWhileStmt(self)
