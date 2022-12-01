@@ -3,7 +3,7 @@ from plox.error import error, PLoxRuntimeError, runtime_error
 from plox.lexer.token import *
 from plox.syntax.expr import *
 from plox.syntax import stmt
-
+import string
 
 
 class Parser:
@@ -68,6 +68,8 @@ class Parser:
 
     def declaration(self):
         try:
+            if self.match(FUN):
+                return self.function("function")
             if self.match(VAR):
                 return self.var_declaration()
             
@@ -116,6 +118,8 @@ class Parser:
             return self.if_statement()
         if self.match(PRINT):
             return self.print_statement()
+        if self.match(RETURN):
+            return self.return_statement()
         if self.match(WHILE):
             return self.while_statement()
         if self.match(LEFT_BRACE):
@@ -185,10 +189,36 @@ class Parser:
         self.consume(SEMICOLON, "Expect ; after expression.")
         return stmt.Print(value)
 
+    def return_statement(self):
+        keyword = self.previous()
+        value = None
+        if not self.check(SEMICOLON):
+            value = self.expression()
+        self.consume(SEMICOLON, "Expect ';' after return value.")
+        return stmt.Return(keyword, value)
+
     def expression_statement(self):
         expr = self.expression()
         self.consume(SEMICOLON, "Expect ; after expression.")
         return stmt.Expression(expr)
+
+    def function(self,kind: string) -> stmt.Function:
+        name = self.consume(IDENTIFIER, "Expect "+kind+" name.")
+        self.consume(LEFT_PAREN, "Expect '(' after "+kind+ " name.")
+        parameters = []
+        if not self.check(RIGHT_PAREN):
+            while True:
+                if parameters.__sizeof__ >= 255:
+                    error(self.peek(), "Can't have more than 255 parameters.")
+                parameters.append(self.consume(IDENTIFIER, "Expect parameter name."))
+                if not self.match(COMMA):
+                    break
+        self.consume(RIGHT_PAREN, "Expect ')' after parameters.")
+        self.consume(LEFT_PAREN, "Expect '{' before " + kind + " body.")
+        body = self.block()
+        return stmt.Function(name, parameters, body)
+
+
 
     def expression(self):
         """

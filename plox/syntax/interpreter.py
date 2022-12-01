@@ -3,25 +3,34 @@ from plox.syntax import expr as EXPR
 from plox.syntax import stmt as STMT
 from plox.lexer.token import *
 from plox.error import *
-from plox.syntax.enviroment import Environment
 
-
+from enviroment import Environment
+from plox.syntax.loxcallable import *
+from plox.syntax.loxfunction import *
 class Interpreter(Visitor):
     def __init__(self):
-        self.environment = Environment()
+        self.globals = Environment()
+        self.environment = self.globals
+        self.globals.define("clock", loxcallable_2())
+        self.locals = {}
 
     def interpret(self, statements) -> None:
         try: 
             for statement in statements:
-                self._execute(statement)
+                self.execute(statement)
         except PLoxRuntimeError as e:
             runtime_error(e)
 
-    def _execute(self, stmt: STMT.Stmt):
+    def execute(self, stmt: STMT.Stmt):
         stmt.accept(self)
+    
+    def resolve(self, expr: EXPR.Expr, depth: int):
+        self.locals[expr]=depth
+
 
     def visitBlockStmt(self, stmt: STMT.Block):
         self.execute_block(stmt.statements, Environment(self.environment))
+
     
     def execute_block(self, statements, environment: Environment):
         # original enviroment outside the block
@@ -29,13 +38,13 @@ class Interpreter(Visitor):
         try:
             self.environment = environment
             for statement in statements:
-                self._execute(statement)
+                self.execute(statement)
         finally:
             # after leaving this block, delete related environment,
             # i.e. restore to the original environment
             self.environment = previous
 
-    def _stringify(self, object: object) -> str:
+    def stringify(self, object: object) -> str:
         if object is None :return "nil"
         if isinstance(object, float):
             text = str(object)
@@ -52,16 +61,16 @@ class Interpreter(Visitor):
     new in ch9
     """
     def visitLogicalExpr(self, expr: EXPR.Logical):
-        left = self._evaluate(expr.left)
+        left = self.evaluate(expr.left)
         if isinstance(expr.operator.type, OR):
-            if self._is_truthy(left):
+            if self.is_truthy(left):
                 return left
         else:
-            if not self._is_truthy(left):
+            if not self.is_truthy(left):
                 return left
-        return self._evaluate(expr.right)
+        return self.evaluate(expr.right)
 
-    def _is_truthy(self, object: object) -> bool:
+    def is_truthy(self, object: object) -> bool:
         if object is None:
             return False
         if isinstance(object,bool):
@@ -69,21 +78,28 @@ class Interpreter(Visitor):
         return True
 
     def visitUnaryExpr(self, expr: EXPR.Unary) -> object:
-        right = self._evaluate(expr.right)
+        right = self.evaluate(expr.right)
         
         if isinstance(expr.operator.type, MINUS):
-            self._check_number_operand(expr.operator, right)
+            self.check_number_operand(expr.operator, right)
             return -float(right)
         elif isinstance(expr.operator.type, BANG):
-            return self._is_truthy(right)
+            return self.is_truthy(right)
 
         return None
 
     def visitVariableExpr(self, expr: EXPR.Variable):
         # the type of expr.name is Token, you need to access its attribute lexeme to get the true variable name.
-        return self.environment.get(expr.name.lexeme)
+        return self.lookup_variable(expr.name, expr)
+
+    def lookup_variable(self, name: Token, expr: EXPR.Expr):
+        distance = self.locals.get(expr)
+        if distance is not None:
+            return self.environment.get_at(distance, name.lexeme)
+        else:
+            return self.globals.get(name)
     
-    def _evaluate(self, expr: EXPR.Expr) -> object:
+    def evaluate(self, expr: EXPR.Expr) -> object:
         """
         `_evaluate()` is used specifically for Expression, which allows the given expr evaluate
         itself with the appropriate visitor method. For every Expression defined in `expr.py`
@@ -101,16 +117,21 @@ class Interpreter(Visitor):
         Syntax:
             exprStmt := expression ";" ;
         """
-        self._evaluate(stmt.expression)
+        self.evaluate(stmt.expression)
+
+    def visit_function_stmt(self, stmt: STMT.Function):
+        function = loxfunction(stmt, self.environment)
+        self.environment.define(stmt.name.lexeme, function)
+        return None
     
     """
      new in 9.2
     """
     def visitIfStmt(self, stmt: STMT.If):
-        if self._is_truthy(self._evaluate(stmt.condition)):
-            self._execute(stmt.thenBranch)
+        if self.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.thenBranch)
         elif stmt.elseBranch is not None:
-            self._execute(stmt.elseBranch)
+            self.execute(stmt.elseBranch)
         return None
 
     def visitPrintStmt(self, stmt: STMT.Print):
@@ -118,56 +139,69 @@ class Interpreter(Visitor):
         Syntax:
             printStmt := "print" expression ";" ;
         """
-        value = self._evaluate(stmt.expression)
-        print(self._stringify(value))
+        value = self.evaluate(stmt.expression)
+        print(self.stringify(value))
     
+    def visitReturnStmt(self, stmt: STMT.Return):
+        value = None
+        if stmt.value is not None:
+            value = self.evaluate(stmt.value)
+
+        raise Return(value)
+
+
     def visitVarStmt(self, stmt: STMT.Var):
         value = None
         if stmt.initializer is not None:
-            value = self._evaluate(stmt.initializer)
-  
+            value = self.evaluate(stmt.initializer)
+        
         self.environment.define(stmt.name.lexeme, value)
     """
          new in 9
     """
     def visitWhileStmt(self, stmt: STMT.While):
-        while self._is_truthy(self._evaluate(stmt.condition)):
-            self._execute(stmt.body)
+        while self.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.body)
         return None
 
     def visitAssignExpr(self, expr: EXPR.Assign) -> object:
-        value = self._evaluate(expr.value)
-        self.environment.assign(expr.name, value)
+        value = self.evaluate(expr.value)
+        distance = self.locals.get(expr)
+        if distance is not None:
+            self.environment.assign_at(distance, expr.name, value)
+        else:
+            self.globals.assign(expr.name, value)
+        
         return value
 
     """
     new in ch9
     """
     def visitIfStmt(self, stmt: STMT.If):
-        if self._is_truthy(self._evaluate(stmt.condition)):
-            self._execute(stmt.thenBranch)
+        if self.is_truthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.thenBranch)
         elif stmt.elseBranch is not None:
-            self._execute(stmt.elseBranch)
+            self.execute(stmt.elseBranch)
         return None
 
     def visitBinaryExpr(self, expr: EXPR.Binary) -> object:
-        left = self._evaluate(expr.left)
-        right = self._evaluate(expr.right)
+        left = self.evaluate(expr.left)
+        right = self.evaluate(expr.right)
 
         if isinstance(expr.operator, GREATER):
-            self._check_number_operands(expr.operator, left, right)
+            self.check_number_operands(expr.operator, left, right)
             return float(left) > float(right)
         elif isinstance(expr.operator, GREATER_EQUAL):
-            self._check_number_operands(expr.operator, left, right)
+            self.check_number_operands(expr.operator, left, right)
             return float(left) >= float(right)
         elif isinstance(expr.operator, LESS):
-            self._check_number_operands(expr.operator, left, right)
+            self.check_number_operands(expr.operator, left, right)
             return float(left) < float(right)
         elif isinstance(expr.operator, LESS_EQUAL):
-            self._check_number_operands(expr.operator, left, right)
+            self.check_number_operands(expr.operator, left, right)
             return float(left) <= float(right)
         elif isinstance(expr.operator, MINUS):
-            self._check_number_operands(expr.operator, left, right)
+            self.check_number_operands(expr.operator, left, right)
             return float(left) - float(right)
         elif isinstance(expr.operator, PLUS):
             if isinstance(left, float) and isinstance(right, float):
@@ -175,29 +209,29 @@ class Interpreter(Visitor):
             if isinstance(left, str) and isinstance(right, str):
                 return str(left) + str(right)
         elif isinstance(expr.operator, SLASH):
-            self._check_number_operands(expr.operator, left, right)
+            self.check_number_operands(expr.operator, left, right)
             return float(left) / float(right)
         elif isinstance(expr.operator, STAR):
-            self._check_number_operands(expr.operator, left, right)
+            self.check_number_operands(expr.operator, left, right)
             return float(left) * float(right)
         elif isinstance(expr.operator, BANG_EQUAL):
-            return not self._is_equal(left,right)
+            return not self.is_equal(left,right)
         elif isinstance(expr.operator, EQUAL_EQUAL):
-            return self._is_equal(left,right)
+            return self.is_equal(left,right)
         
         return None
 
-    def _check_number_operand(self, operator: Token, operand: object) -> None:
+    def check_number_operand(self, operator: Token, operand: object) -> None:
         if isinstance(operand, float):
             return
         raise PLoxRuntimeError(operator, "operand must be a number")
 
-    def _check_number_operands(self, operator: Token, left: object, right: object) -> None:
+    def check_number_operands(self, operator: Token, left: object, right: object) -> None:
         if isinstance(left, float) and isinstance(right, float):
             return
         raise PLoxRuntimeError(operator, "operand must be a number")
 
-    def _is_equal(self, a: object, b: object) -> bool:
+    def is_equal(self, a: object, b: object) -> bool:
         if a is None and b is None:
             return True
         if a is None:
@@ -205,4 +239,30 @@ class Interpreter(Visitor):
         return a == b
 
     def visitGroupingExpr(self, expr: EXPR.Grouping) -> object:
-        return self._evaluate(expr.expression)
+        return self.evaluate(expr.expression)
+
+    """
+        new in ch10
+    """
+
+    def visitCallExpr(self, expr: EXPR.Call):
+        callee = self.evaluate(expr.callee)
+        arguments = []
+        for argument in arguments:
+            arguments.append(self.evaluate(argument))
+        
+        if not isinstance(callee, loxcallable):
+            raise RuntimeError("Can only call functions and classes.")
+        
+        function = loxcallable(callee)
+        
+        if arguments.__sizeof__ is not function.arity():
+            raise RuntimeError("Expected " +
+          function.arity() + " arguments but got " +
+          arguments.size() + ".")
+
+
+        return function.call(self, arguments)
+
+
+    

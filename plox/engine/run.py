@@ -4,7 +4,7 @@ from plox.syntax import Parser
 from plox.syntax import Interpreter
 from plox.utils import check_path_exists
 from plox.error import HAD_ERROR, HAD_RUNTIME_ERROR
-
+from plox.syntax.resolver import *
 
 
 
@@ -55,4 +55,9 @@ def run(source: str):
     print(tokens)
     statements = parser.parse(tokens)
     print(statements)
-    interpreter.interpret(statements)
+
+    interpreter = Interpreter()
+    resolver = Resolver(interpreter)
+    resolver.resolve(statements)
+    if HAD_ERROR : return
+
