@@ -16,6 +16,10 @@ class PLoxRuntimeError(RuntimeError):
     def __init__(self, token: Token, message: str):
         super().__init__(message)
         self.token = token
+class Return(RuntimeError):
+    def __init__(self, value: object, message: str):
+        super().__init__(message)
+        self.value = value
 
 
 def runtime_error(error: PLoxRuntimeError):

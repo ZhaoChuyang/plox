@@ -32,9 +32,11 @@ class Print(Stmt):
         return visitor.visitPrintStmt(self)
 
 
-class Block:
-    pass
-
+class Block(Stmt):
+    def __init__(self, statement):
+        self.statement = statement
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitBlockStmt(self)
 
 class Var:
     def __init__(self, name: Token, initializer: Expr):
@@ -62,3 +64,21 @@ class While(Stmt):
         self.body = body
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitWhileStmt(self)
+"""
+  new in 10
+"""
+class Function(Stmt):
+    params: list[Token]
+    def __init__(self,name: Token, params: list[Token], body: list[Stmt]):
+        self.name = name
+        self.params = params
+        self.body = body
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitFunctionStmt(self)
+
+class Return(Stmt):
+    def __init__(self,keyword: Token, value: Expr):
+        self.keyword = keyword
+        self.value = value
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitReturnStmt(self)
