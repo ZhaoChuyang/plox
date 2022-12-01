@@ -55,10 +55,11 @@ class Var:
 
 
 class If(Stmt):
-    def __init__(self, condition: Expr, thenBranch: Stmt, elseBranch :Stmt):
+    def __init__(self, condition: Expr, then_branch: Stmt, else_branch :Stmt):
         self.condition = condition
-        self.thenBranch = thenBranch
-        self.elseBranch = elseBranch
+        self.then_branch = then_branch
+        self.else_branch = else_branch
+    
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitIfStmt(self)
 
@@ -66,17 +67,18 @@ class While(Stmt):
     def __init__(self, condition: Expr, body: Stmt):
         self.condition = condition
         self.body = body
+    
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitWhileStmt(self)
 """
   new in 10
 """
 class Function(Stmt):
-    params: list[Token]
-    def __init__(self,name: Token, params: list[Token], body: list[Stmt]):
+    def __init__(self,name: Token, params: List[Token], body: List[Stmt]):
         self.name = name
         self.params = params
         self.body = body
+    
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitFunctionStmt(self)
 
@@ -84,5 +86,6 @@ class Return(Stmt):
     def __init__(self,keyword: Token, value: Expr):
         self.keyword = keyword
         self.value = value
+        
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitReturnStmt(self)

@@ -1,3 +1,4 @@
+from typing import List
 from plox.syntax import Visitor
 from plox.syntax.interpreter import *
 from plox.syntax import stmt as STMT
@@ -40,11 +41,11 @@ class Resolver(Visitor):
             self.resolve(stmt.elseBranch)
         return None
     
-    def visit_print_stmt(self, stmt: stmt.Print):
+    def visit_print_stmt(self, stmt: STMT.Print):
         self.resolve(stmt.expression)
         return None
 
-    def visit_return_stmt(self, stmt: stmt.Return):
+    def visit_return_stmt(self, stmt: STMT.Return):
         if self.current_function == FunctionType.NONE:
             error(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
@@ -105,7 +106,6 @@ class Resolver(Visitor):
             error(expr.name,"Can't read local variable in its own initializer.")
         self.resolveLocal(expr, expr.name)
         return None
-
     
     def resolve(self, stmt: STMT.Stmt):
         stmt.accept(self)
@@ -113,7 +113,7 @@ class Resolver(Visitor):
     def resolve(self, expr: EXPR.Expr):
         expr.accept(self)
 
-    def resolve(self, statements: list[STMT.Stmt]):
+    def resolve(self, statements: List[STMT.Stmt]):
         for statement in statements:
             self.resolve(statement)
     

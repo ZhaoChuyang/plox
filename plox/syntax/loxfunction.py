@@ -1,20 +1,20 @@
-from plox.syntax.loxcallable import *
+from typing import List
+from plox.syntax.loxcallable import LoxCallable
 from plox.syntax import stmt
-from plox.syntax.interpreter import *
-from plox.syntax.enviroment import *
-from plox.error import *
-class loxfunction(loxcallable):
+from plox.syntax.environment import *
+from plox.syntax.ret import Return
 
-    declaration: stmt.Function
-    closure: Environment
+
+class LoxFunction(LoxCallable):
 
     def __init__(self, declaration: stmt.Function, closure: Environment):
         self.declaration = declaration
         self.closure = closure
 
-    def call(self, interpreter: Interpreter, arguments: list[object]) -> object:
+    def call(self, interpreter, arguments: List[object]) -> object:
+        # environment = Environment(self.closure)
         environment = Environment(self.closure)
-        for i in self.declaration.params.__sizeof__:
+        for i in range(len(self.declaration.params)):
             environment.define(self.declaration.params[i].lexeme, arguments[i])
         try:
             interpreter.execute_block(self.declaration.body, environment)
@@ -23,7 +23,7 @@ class loxfunction(loxcallable):
         return None
 
     def arity(self) -> int:
-        return self.declaration.params.__sizeof__
+        return len(self.declaration.params)
 
     def __str__(self) -> str:
-        return "<fn " + self.declaration.name.lexeme + ">"
+        return f"<fn {self.declaration.name.lexeme}>"
