@@ -2,16 +2,18 @@ from plox.syntax import Visitor
 from plox.syntax import expr as EXPR
 from plox.syntax import stmt as STMT
 from plox.lexer.token import *
-from plox.error import *
-
-from enviroment import Environment
-from plox.syntax.loxcallable import *
+from plox.error import runtime_error, PLoxRuntimeError
+from plox.syntax.environment import Environment
+from plox.syntax.loxcallable import Clock, LoxCallable
 from plox.syntax.loxfunction import *
+from plox.syntax.ret import Return
+
+
 class Interpreter(Visitor):
     def __init__(self):
         self.globals = Environment()
         self.environment = self.globals
-        self.globals.define("clock", loxcallable_2())
+        self.globals.define("clock", Clock())
         self.locals = {}
 
     def interpret(self, statements) -> None:
@@ -27,11 +29,9 @@ class Interpreter(Visitor):
     def resolve(self, expr: EXPR.Expr, depth: int):
         self.locals[expr]=depth
 
-
     def visitBlockStmt(self, stmt: STMT.Block):
         self.execute_block(stmt.statements, Environment(self.environment))
 
-    
     def execute_block(self, statements, environment: Environment):
         # original enviroment outside the block
         previous = self.environment
@@ -56,10 +56,6 @@ class Interpreter(Visitor):
     def visitLiteralExpr(self, expr: EXPR.Literal) -> object:
         return expr.value
     
-    """
-    new 
-    new in ch9
-    """
     def visitLogicalExpr(self, expr: EXPR.Logical):
         left = self.evaluate(expr.left)
         if isinstance(expr.operator.type, OR):
@@ -73,7 +69,7 @@ class Interpreter(Visitor):
     def is_truthy(self, object: object) -> bool:
         if object is None:
             return False
-        if isinstance(object,bool):
+        if isinstance(object, bool):
             return bool(object)
         return True
 
@@ -90,7 +86,8 @@ class Interpreter(Visitor):
 
     def visitVariableExpr(self, expr: EXPR.Variable):
         # the type of expr.name is Token, you need to access its attribute lexeme to get the true variable name.
-        return self.lookup_variable(expr.name, expr)
+        # return self.lookup_variable(expr.name.lexeme, expr)
+        return self.environment.get(expr.name.lexeme)
 
     def lookup_variable(self, name: Token, expr: EXPR.Expr):
         distance = self.locals.get(expr)
@@ -109,9 +106,6 @@ class Interpreter(Visitor):
         """
         return expr.accept(self)
     
-    """
-    new in 8.1.3
-    """
     def visitExpressionStmt(self, stmt: STMT.Expression) -> None:
         """
         Syntax:
@@ -119,20 +113,15 @@ class Interpreter(Visitor):
         """
         self.evaluate(stmt.expression)
 
-    def visit_function_stmt(self, stmt: STMT.Function):
-        function = loxfunction(stmt, self.environment)
+    def visitFunctionStmt(self, stmt: STMT.Function):
+        function = LoxFunction(stmt, self.environment)
         self.environment.define(stmt.name.lexeme, function)
-        return None
     
-    """
-     new in 9.2
-    """
     def visitIfStmt(self, stmt: STMT.If):
         if self.is_truthy(self.evaluate(stmt.condition)):
-            self.execute(stmt.thenBranch)
-        elif stmt.elseBranch is not None:
-            self.execute(stmt.elseBranch)
-        return None
+            self.execute(stmt.then_branch)
+        elif stmt.else_branch is not None:
+            self.execute(stmt.else_branch)
 
     def visitPrintStmt(self, stmt: STMT.Print):
         """
@@ -149,39 +138,32 @@ class Interpreter(Visitor):
 
         raise Return(value)
 
-
     def visitVarStmt(self, stmt: STMT.Var):
         value = None
         if stmt.initializer is not None:
             value = self.evaluate(stmt.initializer)
         
         self.environment.define(stmt.name.lexeme, value)
-    """
-         new in 9
-    """
+
     def visitWhileStmt(self, stmt: STMT.While):
         while self.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.body)
-        return None
 
     def visitAssignExpr(self, expr: EXPR.Assign) -> object:
         value = self.evaluate(expr.value)
-        distance = self.locals.get(expr)
-        if distance is not None:
-            self.environment.assign_at(distance, expr.name, value)
-        else:
-            self.globals.assign(expr.name, value)
-        
+        self.environment.assign(expr.name, value)
+        # distance = self.locals.get(expr)
+        # if distance is not None:
+        #     self.environment.assign_at(distance, expr.name, value)
+        # else:
+        #     self.globals.assign(expr.name, value)
         return value
 
-    """
-    new in ch9
-    """
     def visitIfStmt(self, stmt: STMT.If):
         if self.is_truthy(self.evaluate(stmt.condition)):
-            self.execute(stmt.thenBranch)
-        elif stmt.elseBranch is not None:
-            self.execute(stmt.elseBranch)
+            self.execute(stmt.then_branch)
+        elif stmt.else_branch is not None:
+            self.execute(stmt.else_branch)
         return None
 
     def visitBinaryExpr(self, expr: EXPR.Binary) -> object:
@@ -241,26 +223,24 @@ class Interpreter(Visitor):
     def visitGroupingExpr(self, expr: EXPR.Grouping) -> object:
         return self.evaluate(expr.expression)
 
-    """
-        new in ch10
-    """
-
     def visitCallExpr(self, expr: EXPR.Call):
+        # expr.callee is an instance of Expr. More specifically a Variable
+        # if expr.callee is a valid identifier. The variable refering to
+        # the function name will finally be evaluated to the function object itself.
         callee = self.evaluate(expr.callee)
+        
         arguments = []
-        for argument in arguments:
+        for argument in expr.arguments:
             arguments.append(self.evaluate(argument))
         
-        if not isinstance(callee, loxcallable):
-            raise RuntimeError("Can only call functions and classes.")
+        if not isinstance(callee, LoxCallable):
+            raise PLoxRuntimeError(expr.paren, "Can only call functions and classes.")
         
-        function = loxcallable(callee)
+        function = callee
         
-        if arguments.__sizeof__ is not function.arity():
-            raise RuntimeError("Expected " +
-          function.arity() + " arguments but got " +
-          arguments.size() + ".")
-
+        if len(arguments) != function.arity():
+            raise PLoxRuntimeError(expr.paren,
+                f"Expected {function.arity()} arguments but got {arguments.size()}.")
 
         return function.call(self, arguments)
 

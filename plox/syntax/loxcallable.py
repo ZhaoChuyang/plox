@@ -1,21 +1,30 @@
-from plox.syntax.interpreter import Interpreter
+from typing import List
 from abc import ABC, abstractmethod
 from time import time
 
-class loxcallable(ABC):
+
+class LoxCallable(ABC):
     def __init__(self):
         pass
+
     @abstractmethod
-    def call(self, interpreter: Interpreter, arguments: list[object]) -> object:
+    def call(self, interpreter, arguments: List[object]) -> object:
         pass
+
     @abstractmethod
     def arity(self) -> int:
         pass
 
-class loxcallable_2(loxcallable):
+"""
+Built-in Callables
+"""
+
+class Clock(LoxCallable):
+    def call(self, interpreter, arguments: List[object]):
+        return time()
+    
     def arity(self):
         return 0
-    def call(self, interpreter: Interpreter, arguments: list):
-        return float(time())
+
     def __str__(self):
         return "<native fn>"
