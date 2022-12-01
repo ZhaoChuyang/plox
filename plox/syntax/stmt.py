@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 from plox.syntax import Visitor
 from plox.syntax.expr import Expr
 from plox.lexer.token import Token
@@ -32,11 +33,14 @@ class Print(Stmt):
         return visitor.visitPrintStmt(self)
 
 
-class Block(Stmt):
-    def __init__(self, statement):
-        self.statement = statement
-    def accept(self, visitor: Visitor) -> None:
+
+class Block:
+    def __init__(self, statements: List[Stmt]):
+        self.statements = statements
+
+    def accept(self, visitor: Visitor):
         return visitor.visitBlockStmt(self)
+
 
 class Var:
     def __init__(self, name: Token, initializer: Expr):

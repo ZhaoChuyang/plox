@@ -4,8 +4,8 @@ from plox.error import error
 
 
 class Scanner:
-    def __init__(self, source):
-        self.source = source
+    def __init__(self):
+        self.source = None
         self.tokens = []
         self.start = 0
         self.current = 0
@@ -185,7 +185,8 @@ class Scanner:
     def _add_token(self, token: Token) -> None:
         self.tokens.append(token)
 
-    def scan_tokens(self) -> List[Token]:
+    def scan_tokens(self, source: str) -> List[Token]:
+        self.source = source
         while not self._is_end():
             self.start = self.current
             self._scan_token()

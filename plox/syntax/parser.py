@@ -7,7 +7,7 @@ import string
 
 
 class Parser:
-    def __init__(self, tokens: List[Token]):
+    def __init__(self):
         """
         There two kinds of things to parse, statement (plox.syntax.stmt) or expression (plox.syntax.expr).
         For statement, the return type is Stmt, whereas for expression, the return type is Expr.
@@ -19,10 +19,12 @@ class Parser:
         Attributes:
             current: pointer point to the next token waiting to be parsed.
         """
-        self.tokens = tokens
+        self.tokens = None
         self.current = 0
 
-    def parse(self):
+    def parse(self, tokens: List[Token]):
+        self.tokens = tokens
+        
         statements = []
         while not self.is_end():
             statements.append(self.declaration())
@@ -106,6 +108,10 @@ class Parser:
 
 
     def statement(self) :
+        """
+        Syntax:
+            statement := exprStmt | printStmt | blockStmt ;
+        """
         if self.match(FOR):
             return self.for_statement()
         if self.match(IF):
@@ -119,6 +125,19 @@ class Parser:
         if self.match(LEFT_BRACE):
             return stmt.Block(self.block())
         return self.expression_statement()
+
+    def block(self):
+        """
+        Syntax:
+            block := "{" declaration* "}" ;
+        """
+        statements = []
+
+        while not self.check(RIGHT_BRACE) and not self.is_end():
+            statements.append(self.declaration())
+        
+        self.consume(RIGHT_BRACE, "Expect '}' after block.")
+        return statements
         
     def while_statement(self):
         self.consume(LEFT_PAREN, "Expect '(' after 'while'.")
@@ -215,6 +234,10 @@ class Parser:
                           | logic_or ;
         """
         # NOTE: `(call ".")? IDENTIFIER` can be derived with logic_or syntax
+        # To determine if the assignment statement is an expression or assignment,
+        # we use the rule of logic_or() to parse any expression on the left side.
+        # After we parsed the l-value, we examine if the next token is EQUAL, if so
+        # the expression after EQUAL is the r-value binded to the l-value.
         expr = self.logic_or()
 
         if self.match(EQUAL):

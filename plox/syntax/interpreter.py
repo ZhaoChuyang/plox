@@ -3,6 +3,7 @@ from plox.syntax import expr as EXPR
 from plox.syntax import stmt as STMT
 from plox.lexer.token import *
 from plox.error import *
+
 from enviroment import Environment
 from plox.syntax.loxcallable import *
 from plox.syntax.loxfunction import *
@@ -26,17 +27,21 @@ class Interpreter(Visitor):
     def resolve(self, expr: EXPR.Expr, depth: int):
         self.locals[expr]=depth
 
-    def visit_block_stmt(self, stmt: STMT.Block):
-        self.execute_block(stmt.statement, Environment(self.environment))
-        return None
+
+    def visitBlockStmt(self, stmt: STMT.Block):
+        self.execute_block(stmt.statements, Environment(self.environment))
+
     
     def execute_block(self, statements, environment: Environment):
+        # original enviroment outside the block
         previous = self.environment
         try:
             self.environment = environment
             for statement in statements:
                 self.execute(statement)
         finally:
+            # after leaving this block, delete related environment,
+            # i.e. restore to the original environment
             self.environment = previous
 
     def stringify(self, object: object) -> str:
@@ -48,14 +53,14 @@ class Interpreter(Visitor):
             return text
         return str(object)
 
-    def visit_literal_expr(self, expr: EXPR.Literal) -> object:
+    def visitLiteralExpr(self, expr: EXPR.Literal) -> object:
         return expr.value
     
     """
     new 
     new in ch9
     """
-    def visit_logical_expr(self, expr: EXPR.Logical):
+    def visitLogicalExpr(self, expr: EXPR.Logical):
         left = self.evaluate(expr.left)
         if isinstance(expr.operator.type, OR):
             if self.is_truthy(left):
@@ -72,7 +77,7 @@ class Interpreter(Visitor):
             return bool(object)
         return True
 
-    def visit_unary_expr(self, expr: EXPR.Unary) -> object:
+    def visitUnaryExpr(self, expr: EXPR.Unary) -> object:
         right = self.evaluate(expr.right)
         
         if isinstance(expr.operator.type, MINUS):
@@ -83,7 +88,8 @@ class Interpreter(Visitor):
 
         return None
 
-    def visit_variable_expr(self, expr: EXPR.Variable):
+    def visitVariableExpr(self, expr: EXPR.Variable):
+        # the type of expr.name is Token, you need to access its attribute lexeme to get the true variable name.
         return self.lookup_variable(expr.name, expr)
 
     def lookup_variable(self, name: Token, expr: EXPR.Expr):
@@ -94,12 +100,19 @@ class Interpreter(Visitor):
             return self.globals.get(name)
     
     def evaluate(self, expr: EXPR.Expr) -> object:
+        """
+        `_evaluate()` is used specifically for Expression, which allows the given expr evaluate
+        itself with the appropriate visitor method. For every Expression defined in `expr.py`
+        you need to provide a visitor method to evaluate and return the expected value for interpreting.
+        
+        Note: Statement is evaluated using the `_execute()` method.
+        """
         return expr.accept(self)
     
     """
     new in 8.1.3
     """
-    def visit_expression_stmt(self, stmt: STMT.Expression) -> None:
+    def visitExpressionStmt(self, stmt: STMT.Expression) -> None:
         """
         Syntax:
             exprStmt := expression ";" ;
@@ -114,14 +127,14 @@ class Interpreter(Visitor):
     """
      new in 9.2
     """
-    def visit_if_stmt(self, stmt: STMT.If):
+    def visitIfStmt(self, stmt: STMT.If):
         if self.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.thenBranch)
         elif stmt.elseBranch is not None:
             self.execute(stmt.elseBranch)
         return None
 
-    def visit_print_stmt(self, stmt: STMT.Print):
+    def visitPrintStmt(self, stmt: STMT.Print):
         """
         Syntax:
             printStmt := "print" expression ";" ;
@@ -129,7 +142,7 @@ class Interpreter(Visitor):
         value = self.evaluate(stmt.expression)
         print(self.stringify(value))
     
-    def visit_return_stmt(self, stmt: STMT.Return):
+    def visitReturnStmt(self, stmt: STMT.Return):
         value = None
         if stmt.value is not None:
             value = self.evaluate(stmt.value)
@@ -137,7 +150,7 @@ class Interpreter(Visitor):
         raise Return(value)
 
 
-    def visit_var_stmt(self, stmt: STMT.Var):
+    def visitVarStmt(self, stmt: STMT.Var):
         value = None
         if stmt.initializer is not None:
             value = self.evaluate(stmt.initializer)
@@ -146,12 +159,12 @@ class Interpreter(Visitor):
     """
          new in 9
     """
-    def visit_while_stmt(self, stmt: STMT.While):
+    def visitWhileStmt(self, stmt: STMT.While):
         while self.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.body)
         return None
 
-    def visit_assign_expr(self, expr: EXPR.Assign) -> object:
+    def visitAssignExpr(self, expr: EXPR.Assign) -> object:
         value = self.evaluate(expr.value)
         distance = self.locals.get(expr)
         if distance is not None:
@@ -164,14 +177,14 @@ class Interpreter(Visitor):
     """
     new in ch9
     """
-    def visit_if_stmt(self, stmt: STMT.If):
+    def visitIfStmt(self, stmt: STMT.If):
         if self.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.thenBranch)
         elif stmt.elseBranch is not None:
             self.execute(stmt.elseBranch)
         return None
 
-    def visit_binary_expr(self, expr: EXPR.Binary) -> object:
+    def visitBinaryExpr(self, expr: EXPR.Binary) -> object:
         left = self.evaluate(expr.left)
         right = self.evaluate(expr.right)
 
@@ -225,14 +238,14 @@ class Interpreter(Visitor):
             return False
         return a == b
 
-    def visit_grouping_expr(self, expr: EXPR.Grouping) -> object:
+    def visitGroupingExpr(self, expr: EXPR.Grouping) -> object:
         return self.evaluate(expr.expression)
 
     """
         new in ch10
     """
 
-    def visit_call_expr(self, expr: EXPR.Call):
+    def visitCallExpr(self, expr: EXPR.Call):
         callee = self.evaluate(expr.callee)
         arguments = []
         for argument in arguments:
