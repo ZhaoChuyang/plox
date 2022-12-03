@@ -23,9 +23,9 @@ class Environment:
     def assign_at(self, distance: int, name: Token, value: object):
         self.ancestor(distance).values[name.lexeme] = value
 
-    def ancestor(self, distance: int) -> 'Environment':
+    def ancestor(self, distance: int):
         environment = self
-        for i in range(0,distance):
+        for _ in range(distance):
             environment =  environment.enclosing
         return environment
 

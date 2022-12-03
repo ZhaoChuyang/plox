@@ -16,9 +16,9 @@ class PLoxRuntimeError(RuntimeError):
     def __init__(self, token: Token, message: str):
         super().__init__(message)
         self.token = token
-        
+
 
 def runtime_error(error: PLoxRuntimeError):
     print(f"[line {error.token.line}] {str(error)} \n")
+    HAD_ERROR = True
     HAD_RUNTIME_ERROR = True
-

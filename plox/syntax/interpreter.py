@@ -27,7 +27,7 @@ class Interpreter(Visitor):
         stmt.accept(self)
     
     def resolve(self, expr: EXPR.Expr, depth: int):
-        self.locals[expr]=depth
+        self.locals[expr] = depth
 
     def visitBlockStmt(self, stmt: STMT.Block):
         self.execute_block(stmt.statements, Environment(self.environment))
@@ -86,15 +86,14 @@ class Interpreter(Visitor):
 
     def visitVariableExpr(self, expr: EXPR.Variable):
         # the type of expr.name is Token, you need to access its attribute lexeme to get the true variable name.
-        # return self.lookup_variable(expr.name.lexeme, expr)
-        return self.environment.get(expr.name.lexeme)
+        return self.lookup_variable(expr.name, expr)
 
     def lookup_variable(self, name: Token, expr: EXPR.Expr):
-        distance = self.locals.get(expr)
+        distance = self.locals.get(expr, None)
         if distance is not None:
             return self.environment.get_at(distance, name.lexeme)
         else:
-            return self.globals.get(name)
+            return self.globals.get(name.lexeme)
     
     def evaluate(self, expr: EXPR.Expr) -> object:
         """
@@ -151,12 +150,12 @@ class Interpreter(Visitor):
 
     def visitAssignExpr(self, expr: EXPR.Assign) -> object:
         value = self.evaluate(expr.value)
-        self.environment.assign(expr.name, value)
-        # distance = self.locals.get(expr)
-        # if distance is not None:
-        #     self.environment.assign_at(distance, expr.name, value)
-        # else:
-        #     self.globals.assign(expr.name, value)
+
+        distance = self.locals.get(expr, None)
+        if distance is not None:
+            self.environment.assign_at(distance, expr.name, value)
+        else:
+            self.globals.assign(expr.name, value)
         return value
 
     def visitIfStmt(self, stmt: STMT.If):
