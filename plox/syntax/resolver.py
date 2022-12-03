@@ -1,125 +1,117 @@
-from typing import List
+import enum
+from typing import List, Union
 from plox.syntax import Visitor
-from plox.syntax.interpreter import *
+from plox.syntax.interpreter import Interpreter
 from plox.syntax import stmt as STMT
-from enum import Enum
-# class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void>
-class FunctionType(Enum):
-    NONE = 'none',
-    FUNCTION = 'function' 
+from plox.syntax import expr as EXPR
+from plox.lexer.token import Token
+from plox.error import PLoxRuntimeError
+
+
+class FunctionType(enum.Enum):
+    NONE = 0
+    FUNCTION = 1
+
 
 class Resolver(Visitor):
-    interpreter: Interpreter
-    #private final Stack<Map<String, Boolean>> scopes = new Stack<>();
-    scopes = [dict()]
-
-    current_function: FunctionType.NONE
-    
     def __init__(self, interpreter: Interpreter):
         self.interpreter = interpreter
+        self.scopes = []
+        self.current_function = FunctionType.NONE
 
-    def visit_block_stmt(self, stmt: STMT.Block):
+    def visitBlockStmt(self, stmt: STMT.Block) -> None:
         self.begin_scope()
-        self.resolve(stmt.statement)
+        self.resolve(stmt.statements)
         self.end_scope()
-        return None
     
-    def visit_expression_stmt(self, stmt: STMT.Expression):
+    def visitExpressionStmt(self, stmt: STMT.Expression) -> None:
         self.resolve(stmt.expression)
-        return None
 
-    def visit_function_stmt(self, stmt: STMT.Function):
+    def visitFunctionStmt(self, stmt: STMT.Function) -> None:
         self.declare(stmt.name)
         self.define(stmt.name)
         self.resolve_function(stmt, FunctionType.FUNCTION)
-        return None
     
-    def visit_if_stmt(self, stmt: STMT.If):
+    def visitIfStmt(self, stmt: STMT.If) -> None:
         self.resolve(stmt.condition)
-        self.resolve(stmt.thenBranch)
-        if stmt.elseBranch is not None:
-            self.resolve(stmt.elseBranch)
-        return None
+        self.resolve(stmt.then_branch)
+        if stmt.else_branch is not None:
+            self.resolve(stmt.else_branch)
     
-    def visit_print_stmt(self, stmt: STMT.Print):
+    def visitPrintStmt(self, stmt: STMT.Print) -> None:
         self.resolve(stmt.expression)
-        return None
 
-    def visit_return_stmt(self, stmt: STMT.Return):
+    def visitReturnStmt(self, stmt: STMT.Return) -> None:
         if self.current_function == FunctionType.NONE:
-            error(stmt.keyword, "Can't return from top-level code.")
+            PLoxRuntimeError(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
             self.resolve(stmt.value)
-        return None
-
     
-    def visit_var_stmt(self, stmt: STMT.Var):
+    def visitVarStmt(self, stmt: STMT.Var) -> None:
         self.declare(stmt.name)
         if stmt.initializer is not None:
             self.resolve(stmt.initializer)
         self.define(stmt.name)
-        return None
     
-    def visit_while_stmt(self, stmt: STMT.While):
+    def visitWhileStmt(self, stmt: STMT.While) -> None:
         self.resolve(stmt.condition)
         self.resolve(stmt.body)
-        return None
 
-    def visit_assign_expr(self, expr: EXPR.Assign):
+    def visitAssignExpr(self, expr: EXPR.Assign) -> None:
         self.resolve(expr.value)
-        self.resolveLocal(expr, expr.name)
-        return None
+        self.resolve_local(expr, expr.name)
 
-    def visit_binary_expr(self, expr: EXPR.Binary):
+    def visitBinaryExpr(self, expr: EXPR.Binary) -> None:
         self.resolve(expr.left)
         self.resolve(expr.right)
-        return None
     
-    def visit_call_expr(self, expr: EXPR.Call):
+    def visitCallExpr(self, expr: EXPR.Call) -> None:
         self.resolve(expr.callee)
         for argument in expr.arguments:
             self.resolve(argument)
-        
-        return None
     
-    def visit_grouping_expr(self, expr: EXPR.Grouping):
+    def visitGroupingExpr(self, expr: EXPR.Grouping) -> None:
         self.resolve(expr.expression)
-        return None
     
-    def visit_literal_expr(self, expr: EXPR.Literal):
-        return None
+    def visitLiteralExpr(self, expr: EXPR.Literal) -> None:
+        pass
     
-    def vsisit_logical_expr(self, expr: EXPR.Logical):
+    def vsisitLogicalExpr(self, expr: EXPR.Logical) -> None:
         self.resolve(expr.left)
         self.resolve(expr.right)
-        return None
 
-    def visit_unary_expr(self, expr: EXPR.Unary):
+    def visitUnaryExpr(self, expr: EXPR.Unary) -> None:
         self.resolve(expr.right)
-        return None
 
-
-
-    def visit_variable_expr(self, expr: EXPR.Variable):
-        ## !scopes.isempty()
-        if self.scopes and isinstance(self.scopes[-1].get(expr.name.lexeme), False):
-            error(expr.name,"Can't read local variable in its own initializer.")
-        self.resolveLocal(expr, expr.name)
-        return None
+    def visitVariableExpr(self, expr: EXPR.Variable) -> None:
+        """
+        Variable Evaluation.
+        """
+        # we don't allow initilize a undefined variable
+        if self.scopes and self.scopes[-1].get(expr.name.lexeme, None) is False:
+            PLoxRuntimeError(expr.name, "Can't read local variable in its own initializer.")
+        self.resolve_local(expr, expr.name)
     
-    def resolve(self, stmt: STMT.Stmt):
-        stmt.accept(self)
+    def resolve_local(self, expr: EXPR.Expr, name: Token) -> None:
+        # resolve the variable to evaluate to its nearest definition in the static stage.
+        for i in range(len(self.scopes)-1 , -1, -1):
+            if name.lexeme in self.scopes[i]:
+                self.interpreter.resolve(expr, len(self.scopes)-1-i)
+                return
 
-    def resolve(self, expr: EXPR.Expr):
-        expr.accept(self)
-
-    def resolve(self, statements: List[STMT.Stmt]):
-        for statement in statements:
-            self.resolve(statement)
+    def resolve(self, syntax: Union[STMT.Stmt, EXPR.Expr, List[STMT.Stmt]]):
+        # for block statements list
+        if isinstance(syntax, List):
+            for statement in syntax:
+                self.resolve(statement)
+            return
+        
+        # for regular expression and statement, using the corresponding visitor function to resolve itself.
+        syntax.accept(self)
     
-    def resolve_function(self, function: STMT.Function, type: FunctionType):
+    def resolve_function(self, function: STMT.Function, func_type: FunctionType) -> None:
         enclosing_function = self.current_function
-        self.current_function = type
+        self.current_function = func_type
         self.begin_scope()
         for param in function.params:
             self.declare(param)
@@ -128,33 +120,23 @@ class Resolver(Visitor):
         self.end_scope()
         self.current_function = enclosing_function
 
-
-
     def begin_scope(self):
-        # scopes.push(new HashMap<String, Boolean>());
         self.scopes.append(dict())
 
     def end_scope(self):
         self.scopes.pop()
 
-    def declare(self, name: Token):
-        # self.scopes.isEmpty()
-        if not self.scopes:
-            return
-        scope = {}
+    def declare(self, name: Token) -> None:
+        # for variable defined in global scope, we don't track it.
+        if not self.scopes: return
+        
         scope = self.scopes[-1]
-        if scope.__contains__(name.lexeme):
-            error(name,"Already a variable with this name in this scope.")
-
+        if name.lexeme in scope:
+            raise PLoxRuntimeError("Already a variable with this name in this scope.")
         scope[name.lexeme] = False
     
-    def define(self, name: Token):
-        if not self.scopes:
-            return
+    def define(self, name: Token) -> None:
+        # for variable defined in global scope, we don't track it.
+        if not self.scopes: return
         self.scopes[-1][name.lexeme] = True
 
-    def resolveLocal(self, expr: EXPR.Expr, name: Token):
-        for i in range(self.scopes.__sizeof__ -1 , -1):
-            if self.scopes[i].__contains__(name.lexeme):
-                self.interpreter.resolve(expr, self.scopes.__sizeof__ -1 -i)
-                return

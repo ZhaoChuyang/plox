@@ -58,8 +58,8 @@ def run(source: str):
     from IPython import embed
 
     interpreter = Interpreter()
+    resolver = Resolver(interpreter)
+    resolver.resolve(statements)
+    if HAD_ERROR:
+        return
     interpreter.interpret(statements)
-    # resolver = Resolver(interpreter)
-    # resolver.resolve(statements)
-    # if HAD_ERROR : return
-
