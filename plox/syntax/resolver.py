@@ -5,12 +5,19 @@ from plox.syntax.interpreter import Interpreter
 from plox.syntax import stmt as STMT
 from plox.syntax import expr as EXPR
 from plox.lexer.token import Token
-from plox.error import PLoxRuntimeError
+from plox.error import PLoxRuntimeError, error
 
 
 class FunctionType(enum.Enum):
     NONE = 0
     FUNCTION = 1
+    INITIALIZER = 2
+    METHOD = 3
+
+
+class ClassType(enum.Enum):
+    NONE = 0
+    CLASS = 1
 
 
 class Resolver(Visitor):
@@ -18,6 +25,7 @@ class Resolver(Visitor):
         self.interpreter = interpreter
         self.scopes = []
         self.current_function = FunctionType.NONE
+        self.current_class = ClassType.NONE
 
     def visitBlockStmt(self, stmt: STMT.Block) -> None:
         self.begin_scope()
@@ -45,6 +53,9 @@ class Resolver(Visitor):
         if self.current_function == FunctionType.NONE:
             PLoxRuntimeError(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
+            if self.current_function is FunctionType.INITIALIZER:
+                error(stmt.keyword, "Can't return a value from an initializer.")
+            
             self.resolve(stmt.value)
     
     def visitVarStmt(self, stmt: STMT.Var) -> None:
@@ -91,6 +102,27 @@ class Resolver(Visitor):
         if self.scopes and self.scopes[-1].get(expr.name.lexeme, None) is False:
             PLoxRuntimeError(expr.name, "Can't read local variable in its own initializer.")
         self.resolve_local(expr, expr.name)
+
+    def visitClassStmt(self, stmt: STMT.Class) -> None:
+        enclosing_class = self.current_class
+        self.current_class = ClassType.CLASS
+
+        self.declare(stmt.name)
+
+        self.begin_scope()
+        self.scopes[-1]["this"] = True
+
+        for method in stmt.methods:
+            declaration = FunctionType.METHOD
+            if method.name.lexeme == 'init':
+                declaration = FunctionType.INITIALIZER
+            self.resolve_function(method, declaration)
+        self.define(stmt.name)
+        
+        self.end_scope()
+
+        self.current_class = enclosing_class
+        
     
     def resolve_local(self, expr: EXPR.Expr, name: Token) -> None:
         # resolve the variable to evaluate to its nearest definition in the static stage.
@@ -140,3 +172,15 @@ class Resolver(Visitor):
         if not self.scopes: return
         self.scopes[-1][name.lexeme] = True
 
+    def visitGetExpr(self, expr: EXPR.Get) -> None:
+        object = self.resolve(expr.object)
+    
+    def visitSetExpr(self, expr: EXPR.Set) -> None:
+        self.resolve(expr.value)
+        self.resolve(expr.object)
+
+    def visitThisExpr(self, expr: EXPR.This) -> None:
+        if self.current_class is not ClassType.CLASS:
+            error(expr.keyword, "Can't use 'this'  outside of the class definition.")
+
+        self.resolve_local(expr, expr.keyword)

@@ -83,9 +83,18 @@ class Function(Stmt):
         return visitor.visitFunctionStmt(self)
 
 class Return(Stmt):
-    def __init__(self,keyword: Token, value: Expr):
+    def __init__(self, keyword: Token, value: Expr):
         self.keyword = keyword
         self.value = value
-        
+
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitReturnStmt(self)
+
+
+class Class(Stmt):
+    def __init__(self, name: Token, methods: List[Function]):
+        self.name = name
+        self.methods = methods
+
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitClassStmt(self)
