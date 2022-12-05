@@ -5,8 +5,10 @@ from plox.lexer.token import *
 from plox.error import runtime_error, PLoxRuntimeError
 from plox.syntax.environment import Environment
 from plox.syntax.loxcallable import Clock, LoxCallable
-from plox.syntax.loxfunction import *
+from plox.syntax.loxfunction import LoxCallable, LoxFunction
 from plox.syntax.ret import Return
+from plox.syntax.loxclass import LoxClass
+from plox.syntax.loxinstance import LoxInstance
 
 
 class Interpreter(Visitor):
@@ -45,13 +47,24 @@ class Interpreter(Visitor):
             self.environment = previous
 
     def stringify(self, object: object) -> str:
-        if object is None :return "nil"
+        if object is None: return "nil"
         if isinstance(object, float):
             text = str(object)
             if text.endswith(".0"):
                 text = text[:len(text)-2]
             return text
         return str(object)
+
+    def visitClassStmt(self, stmt: STMT.Class) -> None:
+        self.environment.define(stmt.name.lexeme, None)
+        
+        methods = dict()
+        for method in stmt.methods:
+            function = LoxFunction(method, self.environment, method.name.lexeme == 'init')
+            methods[method.name.lexeme] = function
+
+        klass = LoxClass(stmt.name.lexeme, methods)
+        self.environment.assign(stmt.name, klass)
 
     def visitLiteralExpr(self, expr: EXPR.Literal) -> object:
         return expr.value
@@ -113,7 +126,7 @@ class Interpreter(Visitor):
         self.evaluate(stmt.expression)
 
     def visitFunctionStmt(self, stmt: STMT.Function):
-        function = LoxFunction(stmt, self.environment)
+        function = LoxFunction(stmt, self.environment, False)
         self.environment.define(stmt.name.lexeme, function)
     
     def visitIfStmt(self, stmt: STMT.If):
@@ -187,8 +200,8 @@ class Interpreter(Visitor):
         elif isinstance(expr.operator, PLUS):
             if isinstance(left, float) and isinstance(right, float):
                 return float(left) + float(right)
-            if isinstance(left, str) and isinstance(right, str):
-                return str(left) + str(right)
+            if isinstance(left, str) or isinstance(right, str):
+                return self.stringify(left) + self.stringify(right)
         elif isinstance(expr.operator, SLASH):
             self.check_number_operands(expr.operator, left, right)
             return float(left) / float(right)
@@ -222,7 +235,7 @@ class Interpreter(Visitor):
     def visitGroupingExpr(self, expr: EXPR.Grouping) -> object:
         return self.evaluate(expr.expression)
 
-    def visitCallExpr(self, expr: EXPR.Call):
+    def visitCallExpr(self, expr: EXPR.Call) -> object:
         # expr.callee is an instance of Expr. More specifically a Variable
         # if expr.callee is a valid identifier. The variable refering to
         # the function name will finally be evaluated to the function object itself.
@@ -239,9 +252,29 @@ class Interpreter(Visitor):
         
         if len(arguments) != function.arity():
             raise PLoxRuntimeError(expr.paren,
-                f"Expected {function.arity()} arguments but got {arguments.size()}.")
+                f"Expected {function.arity()} arguments but got {len(arguments)}.")
 
         return function.call(self, arguments)
 
+    def visitGetExpr(self, expr: EXPR.Get) -> object:
+        object = self.evaluate(expr.object)
+        if isinstance(object, LoxInstance):
+            # FIXME: object has not attribute expr.name
+            return object.get(expr.name)
+        
+        raise PLoxRuntimeError(expr.name, "Only instances have properties.")
+
+    def visitSetExpr(self, expr: EXPR.Set) -> object:
+        object = self.evaluate(expr.object)
+
+        if not isinstance(object, LoxInstance):
+            raise PLoxRuntimeError(expr.name, "Only instances have fields.")
+        
+        value = self.evaluate(expr.value)
+        object.set(expr.name, value)
+        return value
+
+    def visitThisExpr(self, expr: EXPR.This) -> object:
+        return self.lookup_variable(expr.keyword, expr)
 
     

@@ -3,7 +3,6 @@ from plox.error import error, PLoxRuntimeError, runtime_error
 from plox.lexer.token import *
 from plox.syntax.expr import *
 from plox.syntax import stmt
-import string
 
 
 class Parser:
@@ -70,7 +69,7 @@ class Parser:
     def declaration(self):
         """
         Syntax:
-            declaration := funDecl | varDecl | statement ;
+            declaration := funDecl | varDecl | statement | classDecl;
             funDecl := "fun" function ;
         """
         try:
@@ -78,10 +77,28 @@ class Parser:
                 return self.function("function")
             if self.match(VAR):
                 return self.var_declaration()
+            if self.match(CLASS):
+                return self.class_declaration()
             
             return self.statement()
         except:
             pass
+
+    def class_declaration(self):
+        """
+        Syntax:
+            classDecl := "class" IDENTIFIER "{" function* "}" ;
+        """
+        name = self.consume(IDENTIFIER, "Expect class name.")
+        self.consume(LEFT_BRACE, "Expect '{' before class body.")
+
+        methods = []
+        while not self.check(RIGHT_BRACE) and not self.is_end():
+            methods.append(self.function("method"))
+        
+        self.consume(RIGHT_BRACE, "Expect '}' after class body.")
+
+        return stmt.Class(name, methods)
         
     def var_declaration(self):
         """

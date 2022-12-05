@@ -112,6 +112,16 @@ class Unary(Expr):
         return visitor.visitUnaryExpr(self)
 
 
+class Set(Expr):
+    def __init__(self, object: Expr, name: Token, value: Expr):
+        self.object = object
+        self.name = name
+        self.value = value
+
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitSetExpr(self)
+
+
 class Variable(Expr):
     def __init__(self, name: Token):
         self.name = name
