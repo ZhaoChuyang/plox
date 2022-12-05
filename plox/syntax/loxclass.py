@@ -5,12 +5,19 @@ from plox.syntax.loxcallable import LoxCallable
 
 
 class LoxClass(LoxCallable):
-    def __init__(self, name: str, methods: Dict[str, LoxFunction]):
+    def __init__(self, name: str, superclass, methods: Dict[str, LoxFunction]):
+        self.superclass = superclass
         self.name = name
         self.methods = methods
     
     def find_function(self, name: str):
-        return self.methods.get(name, None)
+        if name in self.methods:
+            return self.methods[name]
+
+        if self.superclass is not None:
+            return self.superclass.find_function(name)
+        
+        return None
 
     def call(self, interpreter, arguments: List[object]):
         from plox.syntax.loxinstance import LoxInstance

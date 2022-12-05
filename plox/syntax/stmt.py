@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 from plox.syntax import Visitor
-from plox.syntax.expr import Expr
+from plox.syntax.expr import Expr, Variable
 from plox.lexer.token import Token
 
 
@@ -92,8 +92,9 @@ class Return(Stmt):
 
 
 class Class(Stmt):
-    def __init__(self, name: Token, methods: List[Function]):
+    def __init__(self, name: Token, superclass: Variable, methods: List[Function]):
         self.name = name
+        self.superclass = superclass
         self.methods = methods
 
     def accept(self, visitor: Visitor) -> None:

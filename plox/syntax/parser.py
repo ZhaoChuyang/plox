@@ -87,9 +87,15 @@ class Parser:
     def class_declaration(self):
         """
         Syntax:
-            classDecl := "class" IDENTIFIER "{" function* "}" ;
+            classDecl := "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
         """
         name = self.consume(IDENTIFIER, "Expect class name.")
+
+        superclass = None
+        if self.match(LESS):
+            self.consume(IDENTIFIER, "Expect super class name.")
+            superclass = Variable(self.previous())
+
         self.consume(LEFT_BRACE, "Expect '{' before class body.")
 
         methods = []
@@ -97,8 +103,8 @@ class Parser:
             methods.append(self.function("method"))
         
         self.consume(RIGHT_BRACE, "Expect '}' after class body.")
-
-        return stmt.Class(name, methods)
+        
+        return stmt.Class(name, superclass, methods)
         
     def var_declaration(self):
         """
