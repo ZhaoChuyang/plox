@@ -57,13 +57,26 @@ class Interpreter(Visitor):
 
     def visitClassStmt(self, stmt: STMT.Class) -> None:
         self.environment.define(stmt.name.lexeme, None)
-        
+
+        if stmt.superclass:
+            superclass = self.evaluate(stmt.superclass)
+            if not isinstance(superclass, LoxClass):
+                raise PLoxRuntimeError(stmt.superclass.name, "Superclass must be a class.")
+            self.environment = Environment(self.environment)
+            self.environment.define("super", superclass)
+        else:
+            superclass = None
+
         methods = dict()
         for method in stmt.methods:
             function = LoxFunction(method, self.environment, method.name.lexeme == 'init')
             methods[method.name.lexeme] = function
 
-        klass = LoxClass(stmt.name.lexeme, methods)
+        klass = LoxClass(stmt.name.lexeme, superclass, methods)
+
+        if superclass is not None:
+            self.environment = self.environment.enclosing
+
         self.environment.assign(stmt.name, klass)
 
     def visitLiteralExpr(self, expr: EXPR.Literal) -> object:
@@ -129,6 +142,10 @@ class Interpreter(Visitor):
         function = LoxFunction(stmt, self.environment, False)
         self.environment.define(stmt.name.lexeme, function)
     
+    def visitLambdaExpr(self, expr: EXPR.Lambda):
+        function = LoxFunction(expr, self.environment, False)
+        return function
+
     def visitIfStmt(self, stmt: STMT.If):
         if self.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.then_branch)
@@ -273,6 +290,16 @@ class Interpreter(Visitor):
         value = self.evaluate(expr.value)
         object.set(expr.name, value)
         return value
+
+    def visitSuperExpr(self, expr: EXPR.Super) -> None:
+        distance = self.locals.get(expr)
+        superclass = self.environment.get_at(distance, "super")
+        object = self.environment.get_at(distance-1, "this")
+        method = superclass.find_function(expr.method.lexeme)
+        if method is None:
+            raise PLoxRuntimeError(expr.method, f"Undefined property '{expr.method.lexeme }'.")
+        
+        return method.bind(object)
 
     def visitThisExpr(self, expr: EXPR.This) -> object:
         return self.lookup_variable(expr.keyword, expr)

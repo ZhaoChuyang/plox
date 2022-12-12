@@ -7,7 +7,6 @@ from plox.syntax.loxinstance import LoxInstance
 
 
 class LoxFunction(LoxCallable):
-
     def __init__(self, declaration: stmt.Function, closure: Environment, is_initializer: bool = False):
         self.declaration = declaration
         self.closure = closure

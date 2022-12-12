@@ -4,12 +4,15 @@ HAD_RUNTIME_ERROR = False
 
 
 def error(line: int, message: str):
+    if isinstance(line, Token):
+        line = line.line
     report(line, "", message)
 
 
 def report(line: int, where: str, message: str):
     print(f"[line {line}] Error {where}: {message}")
     HAD_ERROR = True
+    exit(1)
 
 
 class PLoxRuntimeError(RuntimeError):
@@ -19,6 +22,6 @@ class PLoxRuntimeError(RuntimeError):
 
 
 def runtime_error(error: PLoxRuntimeError):
-    print(f"[line {error.token.line}] {str(error)} \n")
+    print(error)
     HAD_ERROR = True
     HAD_RUNTIME_ERROR = True

@@ -1,0 +1,5 @@
+class Example{
+    init(){
+        return 1;
+    }
+}

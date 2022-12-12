@@ -1,0 +1,20 @@
+class Human {
+    init(){
+        this.name = "Human";
+    }
+    say() {
+        print "I am a human. In " + this.name;
+    }
+}
+
+class Student < Human {
+    init(){
+        this.name = "Student";
+    }
+    say() {
+        super.say();
+        print "But I am also a student. In " + this.name;
+    }
+}
+
+Student().say();

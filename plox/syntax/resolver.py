@@ -18,6 +18,7 @@ class FunctionType(enum.Enum):
 class ClassType(enum.Enum):
     NONE = 0
     CLASS = 1
+    SUBCLASS = 2
 
 
 class Resolver(Visitor):
@@ -51,7 +52,7 @@ class Resolver(Visitor):
 
     def visitReturnStmt(self, stmt: STMT.Return) -> None:
         if self.current_function == FunctionType.NONE:
-            PLoxRuntimeError(stmt.keyword, "Can't return from top-level code.")
+            error(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
             if self.current_function is FunctionType.INITIALIZER:
                 error(stmt.keyword, "Can't return a value from an initializer.")
@@ -100,7 +101,7 @@ class Resolver(Visitor):
         """
         # we don't allow initilize a undefined variable
         if self.scopes and self.scopes[-1].get(expr.name.lexeme, None) is False:
-            PLoxRuntimeError(expr.name, "Can't read local variable in its own initializer.")
+            error(expr.name, "Can't read local variable in its own initializer.")
         self.resolve_local(expr, expr.name)
 
     def visitClassStmt(self, stmt: STMT.Class) -> None:
@@ -108,6 +109,16 @@ class Resolver(Visitor):
         self.current_class = ClassType.CLASS
 
         self.declare(stmt.name)
+        self.define(stmt.name)
+
+        if stmt.superclass is not None:
+            if stmt.name.lexeme == stmt.superclass.name.lexeme:
+                error(stmt.superclass.name, "A class can't inherit from itself.")
+            
+            self.current_class = ClassType.SUBCLASS
+            self.resolve(stmt.superclass)
+            self.begin_scope()
+            self.scopes[-1]["super"] = True
 
         self.begin_scope()
         self.scopes[-1]["this"] = True
@@ -117,9 +128,11 @@ class Resolver(Visitor):
             if method.name.lexeme == 'init':
                 declaration = FunctionType.INITIALIZER
             self.resolve_function(method, declaration)
-        self.define(stmt.name)
         
         self.end_scope()
+
+        if stmt.superclass is not None:
+            self.end_scope()
 
         self.current_class = enclosing_class
         
@@ -164,7 +177,7 @@ class Resolver(Visitor):
         
         scope = self.scopes[-1]
         if name.lexeme in scope:
-            raise PLoxRuntimeError("Already a variable with this name in this scope.")
+            error(name, "Already a variable with this name in this scope.")
         scope[name.lexeme] = False
     
     def define(self, name: Token) -> None:
@@ -179,8 +192,27 @@ class Resolver(Visitor):
         self.resolve(expr.value)
         self.resolve(expr.object)
 
+    def visitSuperExpr(self, expr: EXPR.Super) -> None:
+        if self.current_class is ClassType.NONE:
+            error(expr.keyword.line, "Can't use 'super' outside of a class.")
+        elif self.current_class is not  ClassType.SUBCLASS:
+            error(expr.keyword.line, "Can't use 'super' in a class with no superclass.")
+
+        self.resolve_local(expr, expr.keyword)
+
     def visitThisExpr(self, expr: EXPR.This) -> None:
-        if self.current_class is not ClassType.CLASS:
+        if self.current_class is not ClassType.CLASS and self.current_class is not ClassType.SUBCLASS:
             error(expr.keyword, "Can't use 'this'  outside of the class definition.")
 
         self.resolve_local(expr, expr.keyword)
+
+    def visitLambdaExpr(self, function: EXPR.Lambda):
+        enclosing_function = self.current_function
+        self.current_function = FunctionType.FUNCTION
+        self.begin_scope()
+        for param in function.params:
+            self.declare(param)
+            self.define(param)
+        self.resolve(function.body)
+        self.end_scope()
+        self.current_function = enclosing_function

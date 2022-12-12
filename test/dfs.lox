@@ -19,13 +19,19 @@ var n3 = Node(3);
 var n4 = Node(4);
 var n5 = Node(5);
 var n6 = Node(6);
+var n7 = Node(7);
+var n8 = Node(8);
+var n9 = Node(9);
 
 root.left = n1;
 root.right = n2;
 n1.left = n3;
 n1.right = n4;
-n3.left = n5;
-n3.right = n6;
+n2.left = n5;
+n2.right = n6;
+n3.left = n7;
+n3.right = n8;
+n4.left = n9;
 
 fun dfs(node) {
     if(node == nil) return;

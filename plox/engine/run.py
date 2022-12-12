@@ -2,11 +2,9 @@ import cmd
 from plox.lexer import Scanner
 from plox.syntax import Parser
 from plox.syntax import Interpreter
-from plox.utils import check_path_exists
+from plox.utils import check_path_exists, print_syntax_tree
 from plox.error import HAD_ERROR, HAD_RUNTIME_ERROR
 from plox.syntax.resolver import *
-
-
 
 
 class PLoxPromt(cmd.Cmd):
@@ -52,11 +50,14 @@ def run(source: str):
     interpreter = Interpreter()
 
     tokens = scanner.scan_tokens(source)
-    print(tokens)
+    # print(tokens)
     statements = parser.parse(tokens)
-    print(statements)
-    from IPython import embed
+    if HAD_ERROR:
+        return
+    # print(statements)
+    # print_syntax_tree("program", statements, [])
 
+    # print("\n>>>>> PLox Results <<<<<\n")
     interpreter = Interpreter()
     resolver = Resolver(interpreter)
     resolver.resolve(statements)

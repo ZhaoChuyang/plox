@@ -213,6 +213,16 @@ class WHILE(Token):
     def __init__(self, lexeme: str, literal: object, line: int):
         super().__init__("WHILE", lexeme, literal, line)
 
+
+class LAMBDA(Token):
+    def __init__(self, lexeme: str, literal: object, line: int):
+        super().__init__("LAMBDA", lexeme, literal, line)
+
+
+class COLON(Token):
+    def __init__(self, lexeme: str, literal: object, line: int):
+        super().__init__("COLON", lexeme, literal, line)
+
 """
 EOF
 """

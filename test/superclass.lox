@@ -1,0 +1,13 @@
+class Human {
+  say() {
+    print "I am a human.";
+  }
+}
+
+class Student < Human {
+  say() {
+    print "But I am also a student.";
+  }
+}
+
+Student().say();

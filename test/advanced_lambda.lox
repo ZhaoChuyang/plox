@@ -1,0 +1,13 @@
+var a = 10;
+{
+    var b = 20;
+    var fun_3 = lambda x: lambda y: lambda z: x*x*a + y*b + z;
+    
+    print fun_3(1)(2)(3);
+    
+    b = 30;
+    print fun_3(1)(2)(3);
+
+    var a = 40;
+    print fun_3(1)(2)(3);
+}
