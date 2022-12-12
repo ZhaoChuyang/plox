@@ -1,9 +1,13 @@
-class Doughnut {
-  cook() {
-    print "Fry until golden brown.";
+class Human {
+  say() {
+    print "I am a human.";
   }
 }
 
-class BostonCream < Doughnut {}
+class Student < Human {
+  say() {
+    print "But I am also a student.";
+  }
+}
 
-BostonCream().cook();
+Student().say();

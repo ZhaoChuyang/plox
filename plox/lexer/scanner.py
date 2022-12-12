@@ -27,7 +27,8 @@ class Scanner:
             "this": THIS,
             "true": TRUE,
             "var": VAR,
-            "while": WHILE
+            "while": WHILE,
+            "lambda": LAMBDA
         }
     
     def _is_end(self) -> bool:
@@ -148,6 +149,7 @@ class Scanner:
         elif c == '+': self._add_token(PLUS(lexeme, literal, line))
         elif c == ';': self._add_token(SEMICOLON(lexeme, literal, line))
         elif c == '*': self._add_token(STAR(lexeme, literal, line))
+        elif c == ':': self._add_token(COLON(lexeme, literal, line))
         # two-characters token
         elif c == '!':
             self._add_token(BANG_EQUAL(lexeme, literal, line) if self._match("=") else BANG(lexeme, literal, line))

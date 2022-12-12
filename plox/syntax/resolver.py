@@ -52,7 +52,7 @@ class Resolver(Visitor):
 
     def visitReturnStmt(self, stmt: STMT.Return) -> None:
         if self.current_function == FunctionType.NONE:
-            PLoxRuntimeError(stmt.keyword, "Can't return from top-level code.")
+            error(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
             if self.current_function is FunctionType.INITIALIZER:
                 error(stmt.keyword, "Can't return a value from an initializer.")
@@ -101,7 +101,7 @@ class Resolver(Visitor):
         """
         # we don't allow initilize a undefined variable
         if self.scopes and self.scopes[-1].get(expr.name.lexeme, None) is False:
-            PLoxRuntimeError(expr.name, "Can't read local variable in its own initializer.")
+            error(expr.name, "Can't read local variable in its own initializer.")
         self.resolve_local(expr, expr.name)
 
     def visitClassStmt(self, stmt: STMT.Class) -> None:
@@ -177,7 +177,7 @@ class Resolver(Visitor):
         
         scope = self.scopes[-1]
         if name.lexeme in scope:
-            raise PLoxRuntimeError("Already a variable with this name in this scope.")
+            error(name, "Already a variable with this name in this scope.")
         scope[name.lexeme] = False
     
     def define(self, name: Token) -> None:
@@ -201,7 +201,18 @@ class Resolver(Visitor):
         self.resolve_local(expr, expr.keyword)
 
     def visitThisExpr(self, expr: EXPR.This) -> None:
-        if self.current_class is not ClassType.CLASS:
+        if self.current_class is not ClassType.CLASS and self.current_class is not ClassType.SUBCLASS:
             error(expr.keyword, "Can't use 'this'  outside of the class definition.")
 
         self.resolve_local(expr, expr.keyword)
+
+    def visitLambdaExpr(self, function: EXPR.Lambda):
+        enclosing_function = self.current_function
+        self.current_function = FunctionType.FUNCTION
+        self.begin_scope()
+        for param in function.params:
+            self.declare(param)
+            self.define(param)
+        self.resolve(function.body)
+        self.end_scope()
+        self.current_function = enclosing_function

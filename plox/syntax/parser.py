@@ -64,7 +64,6 @@ class Parser:
             return self.advance()
 
         error(self.peek().line, message)
-        exit(1)
 
     def declaration(self):
         """
@@ -103,7 +102,7 @@ class Parser:
             methods.append(self.function("method"))
         
         self.consume(RIGHT_BRACE, "Expect '}' after class body.")
-        
+
         return stmt.Class(name, superclass, methods)
         
     def var_declaration(self):
@@ -263,44 +262,69 @@ class Parser:
         """
         Syntax:
             function := IDENTIFIER "(" parameters? ")" block ;
+            function := IDENTIFIER "=" LAMBDA (IDENTIFIER)* ":" expr ;
 
         Args:
             kind (str): "function" for pure function and "method" for class function.
         """
         name = self.consume(IDENTIFIER, f"Expect {kind} name.")
-        self.consume(LEFT_PAREN, f"Expect '(' after {kind} name.")
-        parameters = []
-        if not self.check(RIGHT_PAREN):
-            while True:
-                if len(parameters) >= 255:
-                    error(self.peek(), "Can't have more than 255 parameters.")
-                parameters.append(self.consume(IDENTIFIER, "Expect parameter name."))
-                if not self.match(COMMA):
-                    break
+        if self.match(LEFT_PAREN):
+            # self.consume(LEFT_PAREN, f"Expect '(' after {kind} name.")
+            parameters = []
+            if not self.check(RIGHT_PAREN):
+                while True:
+                    if len(parameters) >= 255:
+                        error(self.peek(), "Can't have more than 255 parameters.")
+                    parameters.append(self.consume(IDENTIFIER, "Expect parameter name."))
+                    if not self.match(COMMA):
+                        break
+            
+            self.consume(RIGHT_PAREN, "Expect ')' after parameters.")
+            self.consume(LEFT_BRACE, "Expect '{' before %s body." % kind)
+            body = self.block()
+            return stmt.Function(name, parameters, body)
         
-        self.consume(RIGHT_PAREN, "Expect ')' after parameters.")
-        self.consume(LEFT_BRACE, "Expect '{' before %s body." % kind)
-        body = self.block()
-        return stmt.Function(name, parameters, body)
+        else:
+            error(name.line, f"Expect '(' or '=' after {kind} name.")
+
 
     def expression(self) -> Expr:
         """
         Syntax:
             expression := assignment ;
         """
+        if self.match(LAMBDA):
+            name = self.previous()
+            # self.consume(LAMBDA, "Expect 'lambda' after '='.")
+            
+            parameters = []
+            while True:
+                if len(parameters) >= 255:
+                    error(self.peek(), "Can't have more than 255 parameters.")
+                parameters.append(self.consume(IDENTIFIER, "Expect parameter name."))
+                if not self.match(COMMA):
+                    break
+            self.consume(COLON, "Expect ':' after parameters in lambda expression.")
+            expr = self.expression()
+            # expr = self.declaration()
+            # self.consume(SEMICOLON, "Expect ';' after lambda expression.")
+            body = [stmt.Return(name, expr)]
+            return Lambda(parameters, body)
+        
         return self.assignment()
 
     def assignment(self):
         """
         Syntax:
             assignment := (call ".")? IDENTIFIER "=" assigment 
-                          | logic_or ;
+                          | logic_or;
         """
         # NOTE: `(call ".")? IDENTIFIER` can be derived with logic_or syntax
         # To determine if the assignment statement is an expression or assignment,
         # we use the rule of logic_or() to parse any expression on the left side.
         # After we parsed the l-value, we examine if the next token is EQUAL, if so
         # the expression after EQUAL is the r-value binded to the l-value.
+        
         expr = self.logic_or()
 
         if self.match(EQUAL):
@@ -481,6 +505,6 @@ class Parser:
             expr = self.expression()
             self.consume(RIGHT_PAREN, "Expect ')' after expression.")
             return Grouping(expr)
-        
+        # raise RuntimeError("Expect expression")
         error(self.peek().line, "Expect expression.")        
     

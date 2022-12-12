@@ -128,5 +128,14 @@ class Variable(Expr):
 
     def accept(self, visitor: Visitor) -> None:
         return visitor.visitVariableExpr(self)
+
+
+class Lambda(Expr):
+    def __init__(self, params: List[object], body: Expr) -> None:
+        self.name = "lambda function"
+        self.params = params
+        self.body = body
     
-    
+    def accept(self, visitor: Visitor) -> None:
+        return visitor.visitLambdaExpr(self)
+

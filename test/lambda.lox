@@ -1,0 +1,5 @@
+var fun_1 = lambda a, b, c, x: a * x * x + b * x + c;
+print fun_1(1, 2, 3, 5);
+
+var fun_2 = lambda x: (lambda y: x+y);
+print fun_2(3)(4);

@@ -34,7 +34,7 @@ class Print(Stmt):
 
 
 
-class Block:
+class Block(Stmt):
     def __init__(self, statements: List[Stmt]):
         self.statements = statements
 
@@ -42,7 +42,7 @@ class Block:
         return visitor.visitBlockStmt(self)
 
 
-class Var:
+class Var(Stmt):
     def __init__(self, name: Token, initializer: Expr):
         """
         name is of type IDENTIFIER, which is the variable name.

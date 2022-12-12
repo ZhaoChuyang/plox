@@ -1,0 +1,39 @@
+class Node{
+    init(val){
+        this.val = val;
+        this.next = nil;
+    }
+}
+
+var head = Node(0);
+var n1 = Node(1);
+var n2 = Node(2);
+var n3 = Node(3);
+var n4 = Node(4);
+
+head.next = n1;
+n1.next = n2;
+n2.next = n3;
+n3.next = n4;
+
+fun reverse(head){
+    var current = head;
+    var prev = nil;
+    var next = nil;
+
+    while(current != nil){
+        next = current.next;
+        current.next = prev;
+        prev = current;
+        current = next;
+    }
+    head = prev;
+    return head;
+}
+
+head = reverse(head);
+
+while(head != nil){
+    print head.val;
+    head = head.next;
+}

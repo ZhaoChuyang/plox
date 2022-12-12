@@ -56,18 +56,17 @@ class Interpreter(Visitor):
         return str(object)
 
     def visitClassStmt(self, stmt: STMT.Class) -> None:
+        self.environment.define(stmt.name.lexeme, None)
+
         if stmt.superclass:
             superclass = self.evaluate(stmt.superclass)
             if not isinstance(superclass, LoxClass):
                 raise PLoxRuntimeError(stmt.superclass.name, "Superclass must be a class.")
             self.environment = Environment(self.environment)
             self.environment.define("super", superclass)
-
         else:
             superclass = None
 
-        self.environment.define(stmt.name.lexeme, None)
-        
         methods = dict()
         for method in stmt.methods:
             function = LoxFunction(method, self.environment, method.name.lexeme == 'init')
@@ -143,6 +142,10 @@ class Interpreter(Visitor):
         function = LoxFunction(stmt, self.environment, False)
         self.environment.define(stmt.name.lexeme, function)
     
+    def visitLambdaExpr(self, expr: EXPR.Lambda):
+        function = LoxFunction(expr, self.environment, False)
+        return function
+
     def visitIfStmt(self, stmt: STMT.If):
         if self.is_truthy(self.evaluate(stmt.condition)):
             self.execute(stmt.then_branch)
